@@ -1,0 +1,42 @@
+[
+  {
+    "domain": "www.cloudflare.com",
+    "region": "global",
+    "category": "cdn",
+    "port": 443,
+    "sni": "www.cloudflare.com",
+    "notes": "High availability baseline, useful for connectivity probes."
+  },
+  {
+    "domain": "www.microsoft.com",
+    "region": "global",
+    "category": "enterprise",
+    "port": 443,
+    "sni": "www.microsoft.com",
+    "notes": "Stable TLS endpoint with broad regional reach."
+  },
+  {
+    "domain": "www.apple.com",
+    "region": "global",
+    "category": "consumer",
+    "port": 443,
+    "sni": "www.apple.com",
+    "notes": "Stable public website; validate per VPS region before use."
+  },
+  {
+    "domain": "www.samsung.com",
+    "region": "asia",
+    "category": "consumer",
+    "port": 443,
+    "sni": "www.samsung.com",
+    "notes": "Good Asia-Pacific candidate; must be tested from node."
+  },
+  {
+    "domain": "www.amazon.com",
+    "region": "north-america",
+    "category": "commerce",
+    "port": 443,
+    "sni": "www.amazon.com",
+    "notes": "Useful North America candidate; latency varies by VPS network."
+  }
+]

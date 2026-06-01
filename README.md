@@ -30,6 +30,20 @@ locally.
 
 ## Suggested First Run
 
+One-line install on the master VPS:
+
+```bash
+bash <(curl -Ls https://raw.githubusercontent.com/tyrantcwj/xui-pro/main/install.sh) master
+```
+
+One-line install on an agent VPS:
+
+```bash
+bash <(curl -Ls https://raw.githubusercontent.com/tyrantcwj/xui-pro/main/install.sh) agent --master https://panel.example.com --token xxx --region asia
+```
+
+Local development:
+
 ```bash
 cd xui-next
 go run ./cmd/xuid

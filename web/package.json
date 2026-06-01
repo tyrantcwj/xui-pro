@@ -1,0 +1,22 @@
+{
+  "name": "xui-next-web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@vitejs/plugin-vue": "^5.0.0",
+    "echarts": "^5.5.0",
+    "pinia": "^2.1.7",
+    "vite": "^5.0.0",
+    "vue": "^3.4.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "vue-tsc": "^2.0.0"
+  }
+}

@@ -29,9 +29,9 @@ go build ./cmd/xui-agent
 cd web && npm run build
 ```
 
-## 先做 Release
+## 关于 Release
 
-一行安装脚本会从 GitHub Release 下载二进制包，所以首次试装前需要先创建一个版本 tag，例如：
+一行安装脚本会优先从 GitHub Release 下载二进制包，这是最快、最干净的安装方式。正式试装前建议先创建一个版本 tag，例如：
 
 ```bash
 git tag v0.1.0
@@ -44,6 +44,8 @@ GitHub Actions 会自动生成：
 - `xui-pro-linux-arm64.tar.gz`
 
 等 Release 资产生成后，再到 VPS 上执行下面的一行安装命令。
+
+如果 Release 还没有创建，安装脚本会自动回退到“下载源码并在 VPS 上构建”。这种方式会稍慢一些，但适合早期快速测试。
 
 ## 一行安装
 

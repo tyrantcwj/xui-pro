@@ -11,14 +11,15 @@ const (
 )
 
 type Node struct {
-	ID        string     `json:"id"`
-	Name      string     `json:"name"`
-	Region    string     `json:"region"`
-	Endpoint  string     `json:"endpoint"`
-	Version   string     `json:"version"`
-	Status    NodeStatus `json:"status"`
-	LastSeen  time.Time  `json:"lastSeen"`
-	CreatedAt time.Time  `json:"createdAt"`
+	ID        string      `json:"id"`
+	Name      string      `json:"name"`
+	Region    string      `json:"region"`
+	Endpoint  string      `json:"endpoint"`
+	Version   string      `json:"version"`
+	Status    NodeStatus  `json:"status"`
+	LastSeen  time.Time   `json:"lastSeen"`
+	CreatedAt time.Time   `json:"createdAt"`
+	Metrics   *NodeMetric `json:"metrics,omitempty"`
 }
 
 type NodeMetric struct {

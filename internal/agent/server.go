@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"runtime"
 	"time"
 
 	"xui-next/internal/domain"
@@ -32,13 +31,8 @@ func (a *Agent) Register() error {
 
 func (a *Agent) Heartbeat() error {
 	req := domain.HeartbeatRequest{
-		Node: a.Node,
-		Metrics: domain.NodeMetric{
-			CPU:    0,
-			Memory: memoryPercent(),
-			Disk:   0,
-			XrayOK: true,
-		},
+		Node:    a.Node,
+		Metrics: CollectMetrics(),
 	}
 	return a.post("/api/nodes/"+a.Node.ID+"/heartbeat", req, nil)
 }
@@ -66,15 +60,6 @@ func (a *Agent) post(path string, body any, out any) error {
 		return json.NewDecoder(resp.Body).Decode(out)
 	}
 	return nil
-}
-
-func memoryPercent() float64 {
-	var m runtime.MemStats
-	runtime.ReadMemStats(&m)
-	if m.Sys == 0 {
-		return 0
-	}
-	return float64(m.Alloc) / float64(m.Sys) * 100
 }
 
 func NodeFromEnv() domain.Node {

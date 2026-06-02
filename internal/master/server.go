@@ -118,34 +118,36 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 }
 
 const indexHTML = `<!doctype html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>XUI Pro</title>
   <style>
-    :root{color-scheme:dark;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#101316;color:#edf5f2}body{margin:0}.shell{max-width:1180px;margin:0 auto;padding:40px 20px}.top{display:flex;justify-content:space-between;gap:16px;align-items:center;margin-bottom:24px}h1{margin:0;font-size:30px}p{color:#94a6a1}.badge{border-radius:999px;padding:6px 10px;background:#18382c;color:#65e6ad;font-weight:700}.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.card,.panel{border:1px solid #29343c;background:#171d22;border-radius:8px;padding:18px}.panel{margin-top:16px;overflow-x:auto}.card span{display:block;color:#94a6a1;margin-bottom:8px}.card strong{font-size:28px}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:10px 8px;border-bottom:1px solid #27323a;white-space:nowrap}th{color:#94a6a1;font-size:13px}a{color:#65e6ad}code{background:#222b31;padding:2px 6px;border-radius:6px}@media(max-width:760px){.top{align-items:flex-start;flex-direction:column}.grid{grid-template-columns:1fr}}
+    :root{color-scheme:dark;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#101316;color:#edf5f2}body{margin:0}.shell{max-width:1180px;margin:0 auto;padding:40px 20px}.top{display:flex;justify-content:space-between;gap:16px;align-items:center;margin-bottom:24px}h1{margin:0;font-size:30px}p{color:#94a6a1}.badge{border-radius:999px;padding:6px 10px;background:#18382c;color:#65e6ad;font-weight:700}.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.card,.panel{border:1px solid #29343c;background:#171d22;border-radius:8px;padding:18px}.panel{margin-top:16px;overflow-x:auto}.card span{display:block;color:#94a6a1;margin-bottom:8px}.card strong{font-size:28px}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:10px 8px;border-bottom:1px solid #27323a;white-space:nowrap}th{color:#94a6a1;font-size:13px}a,.linkbtn{color:#65e6ad}.linkbtn{border:0;background:transparent;cursor:pointer;font:inherit;padding:0}.actions{display:flex;gap:12px}code{background:#222b31;padding:2px 6px;border-radius:6px}@media(max-width:760px){.top{align-items:flex-start;flex-direction:column}.grid{grid-template-columns:1fr}}
   </style>
 </head>
 <body>
   <main class="shell">
-    <div class="top"><div><h1>XUI Pro</h1><p>Master is running. This lightweight dashboard is for early install testing.</p></div><span class="badge" id="health">checking</span></div>
-    <section class="grid"><div class="card"><span>Nodes</span><strong id="nodeCount">-</strong></div><div class="card"><span>Online</span><strong id="onlineCount">-</strong></div><div class="card"><span>API</span><strong>/api</strong></div></section>
-    <section class="panel"><h2>Node Fleet</h2><table><thead><tr><th>Name</th><th>Region</th><th>Status</th><th>CPU</th><th>Memory</th><th>Disk</th><th>Version</th><th>Last Seen</th></tr></thead><tbody id="nodes"><tr><td colspan="8">No agents yet. Install an agent node and it will appear here.</td></tr></tbody></table></section>
-    <section class="panel"><h2>Next Step</h2><p>Health: <a href="/api/health">/api/health</a>, nodes: <a href="/api/nodes">/api/nodes</a></p></section>
+    <div class="top"><div><h1>XUI Pro</h1><p>主控服务已启动。当前是早期内置面板，完整 Vue 面板会继续完善。</p></div><span class="badge" id="health">检测中</span></div>
+    <section class="grid"><div class="card"><span>节点数量</span><strong id="nodeCount">-</strong></div><div class="card"><span>在线节点</span><strong id="onlineCount">-</strong></div><div class="card"><span>主控域名</span><strong>xui.ityc.cc</strong></div></section>
+    <section class="panel"><h2>节点列表</h2><table><thead><tr><th>节点名</th><th>国家</th><th>状态</th><th>CPU</th><th>内存</th><th>磁盘</th><th>版本</th><th>最后心跳</th><th>SSH</th></tr></thead><tbody id="nodes"><tr><td colspan="9">暂无节点，安装 Agent 后会显示在这里。</td></tr></tbody></table></section>
+    <section class="panel"><h2>下一步</h2><p>健康检查：<a href="/api/health">/api/health</a>，节点 API：<a href="/api/nodes">/api/nodes</a></p><p>Agent 示例：<code>bash &lt;(curl -Ls https://raw.githubusercontent.com/tyrantcwj/xui-pro/main/install.sh) agent --master http://xui.ityc.cc:8080 --country China --token test</code></p></section>
   </main>
   <script>
     async function load(){
       const h=await fetch('/api/health').then(r=>r.json()).catch(()=>({status:'error'}));
-      document.getElementById('health').textContent=h.status;
+      document.getElementById('health').textContent=h.status==='ok'?'正常':'异常';
       const ns=await fetch('/api/nodes').then(r=>r.json()).catch(()=>[]);
       document.getElementById('nodeCount').textContent=ns.length;
       document.getElementById('onlineCount').textContent=ns.filter(n=>n.status==='online').length;
-      if(ns.length){document.getElementById('nodes').innerHTML=ns.map(n=>{const m=n.metrics||{};return '<tr><td>'+(n.name||n.id)+'</td><td>'+(n.region||'-')+'</td><td>'+(n.status||'-')+'</td><td>'+pct(m.cpu)+'</td><td>'+pct(m.memory)+'</td><td>'+pct(m.disk)+'</td><td>'+(n.version||'-')+'</td><td>'+formatTime(n.lastSeen)+'</td></tr>'}).join('')}
+      if(ns.length){document.getElementById('nodes').innerHTML=ns.map(n=>{const m=n.metrics||{};const target=n.endpoint||n.name||n.id;const user=n.sshUser||'root';const ssh='ssh '+user+'@'+target;return '<tr><td>'+(n.name||n.id)+'</td><td>'+(n.country||n.region||'-')+'</td><td>'+statusText(n.status)+'</td><td>'+pct(m.cpu)+'</td><td>'+pct(m.memory)+'</td><td>'+pct(m.disk)+'</td><td>'+(n.version||'-')+'</td><td>'+formatTime(n.lastSeen)+'</td><td><span class="actions"><a href="ssh://'+user+'@'+target+'">打开</a><button class="linkbtn" onclick="copyText(\''+ssh.replace(/\\/g,'\\\\').replace(/'/g,"\\'")+'\')">复制</button></span></td></tr>'}).join('')}
     }
+    function statusText(v){return v==='online'?'在线':(v||'-')}
     function pct(v){return typeof v==='number'&&v>0?v.toFixed(1)+'%':'-'}
     function formatTime(v){return v?new Date(v).toLocaleString():'-'}
-    load(); setInterval(load, 15000);
+    async function copyText(v){try{await navigator.clipboard.writeText(v);alert('已复制：'+v)}catch(e){prompt('复制 SSH 命令',v)}}
+    load(); setInterval(load,15000);
   </script>
 </body>
 </html>`

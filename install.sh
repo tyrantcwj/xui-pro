@@ -8,6 +8,7 @@ CONFIG_DIR="${XUI_PRO_CONFIG_DIR:-/etc/xui-pro}"
 SERVICE_DIR="/etc/systemd/system"
 VERSION="${XUI_PRO_VERSION:-latest}"
 GO_VERSION="${XUI_PRO_GO_VERSION:-1.22.12}"
+FORCE_SOURCE="${XUI_PRO_SOURCE:-0}"
 MODE="${1:-master}"
 
 usage() {
@@ -18,6 +19,7 @@ Usage:
 
 Examples:
   bash <(curl -Ls https://raw.githubusercontent.com/tyrantcwj/xui-pro/main/install.sh) master
+  XUI_PRO_SOURCE=1 bash <(curl -Ls https://raw.githubusercontent.com/tyrantcwj/xui-pro/main/install.sh) master
   bash <(curl -Ls https://raw.githubusercontent.com/tyrantcwj/xui-pro/main/install.sh) agent --master https://panel.example.com --token xxx
 
 Environment:
@@ -25,6 +27,7 @@ Environment:
   XUI_PRO_REPO=tyrantcwj/xui-pro
   XUI_PRO_INSTALL_DIR=/usr/local/xui-pro
   XUI_PRO_GO_VERSION=1.22.12
+  XUI_PRO_SOURCE=1
 EOF
 }
 
@@ -83,6 +86,12 @@ install_files() {
   tmp="$(mktemp -d)"
   trap "rm -rf '$tmp'" EXIT
 
+  if [ "$FORCE_SOURCE" = "1" ]; then
+    echo "Source build was requested. Building xui-pro from main..."
+    build_from_source "$arch" "$tmp"
+    return
+  fi
+
   echo "Downloading xui-pro ${VERSION} for linux-${arch}..."
   if ! curl -fL "$(download_url "$arch")" -o "$tmp/xui-pro.tar.gz"; then
     echo "Release asset was not found. Falling back to source build..."
@@ -123,12 +132,11 @@ ensure_go() {
     return
   fi
 
-  local go_arch="$arch"
   local toolchain_dir="/usr/local/xui-pro-toolchain"
-  local go_tar="/tmp/go${GO_VERSION}.linux-${go_arch}.tar.gz"
+  local go_tar="/tmp/go${GO_VERSION}.linux-${arch}.tar.gz"
   echo "Installing portable Go ${GO_VERSION} for source build..."
   mkdir -p "$toolchain_dir"
-  curl -fL "https://go.dev/dl/go${GO_VERSION}.linux-${go_arch}.tar.gz" -o "$go_tar"
+  curl -fL "https://go.dev/dl/go${GO_VERSION}.linux-${arch}.tar.gz" -o "$go_tar"
   rm -rf "$toolchain_dir/go"
   tar -xzf "$go_tar" -C "$toolchain_dir"
   export PATH="$toolchain_dir/go/bin:$PATH"

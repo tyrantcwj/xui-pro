@@ -1,8 +1,12 @@
+VERSION ?= dev
+COMMIT ?= local
+LDFLAGS := -s -w -X xui-next/internal/version.Version=$(VERSION) -X xui-next/internal/version.Commit=$(COMMIT)
+
 .PHONY: build build-web package
 
 build:
-	go build -o dist/xuid ./cmd/xuid
-	go build -o dist/xui-agent ./cmd/xui-agent
+	go build -ldflags "$(LDFLAGS)" -o dist/xuid ./cmd/xuid
+	go build -ldflags "$(LDFLAGS)" -o dist/xui-agent ./cmd/xui-agent
 
 build-web:
 	cd web && npm install && npm run build

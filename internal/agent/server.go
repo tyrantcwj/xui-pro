@@ -64,11 +64,14 @@ func (a *Agent) post(path string, body any, out any) error {
 
 func NodeFromEnv() domain.Node {
 	hostname, _ := os.Hostname()
+	country := env("XUI_NODE_COUNTRY", env("XUI_NODE_REGION", "unknown"))
 	return domain.Node{
 		ID:       env("XUI_NODE_ID", hostname),
 		Name:     env("XUI_NODE_NAME", hostname),
-		Region:   env("XUI_NODE_REGION", "unknown"),
-		Endpoint: env("XUI_NODE_ENDPOINT", ""),
+		Region:   country,
+		Country:  country,
+		Endpoint: env("XUI_NODE_ENDPOINT", hostname),
+		SSHUser:  env("XUI_SSH_USER", "root"),
 		Version:  "next-dev",
 	}
 }

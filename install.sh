@@ -128,7 +128,7 @@ installed_version_label() {
       ;;
     agent)
       if [ -x "$INSTALL_DIR/xui-agent" ]; then
-        label="$($INSTALL_DIR/xui-agent" --version 2>/dev/null || true)"
+        label="$($INSTALL_DIR/xui-agent --version 2>/dev/null || true)"
       fi
       ;;
   esac

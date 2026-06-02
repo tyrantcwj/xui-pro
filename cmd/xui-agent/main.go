@@ -1,14 +1,21 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"time"
 
 	"xui-next/internal/agent"
+	"xui-next/internal/version"
 )
 
 func main() {
+	if len(os.Args) > 1 && os.Args[1] == "--version" {
+		fmt.Println("xui-pro agent " + version.String())
+		return
+	}
+
 	masterURL := os.Getenv("XUI_MASTER")
 	if masterURL == "" {
 		masterURL = "http://127.0.0.1:8080"

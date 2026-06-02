@@ -34,6 +34,15 @@ func (s *Store) UpsertNode(n domain.Node) domain.Node {
 	} else {
 		n.CreatedAt = existing.CreatedAt
 	}
+	if n.Country == "" {
+		n.Country = n.Region
+	}
+	if n.Region == "" {
+		n.Region = n.Country
+	}
+	if n.SSHUser == "" {
+		n.SSHUser = "root"
+	}
 	n.LastSeen = now
 	n.Status = domain.NodeStatusOnline
 	n.Metrics = nil

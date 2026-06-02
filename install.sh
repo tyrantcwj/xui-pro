@@ -15,12 +15,12 @@ usage() {
   cat <<'EOF'
 Usage:
   install.sh master [--listen :8080]
-  install.sh agent --master https://panel.example.com [--token TOKEN] [--node-id NODE_ID] [--region REGION]
+  install.sh agent --master http://xui.ityc.cc:8080 [--token TOKEN] [--node-id NODE_ID] [--country COUNTRY]
 
 Examples:
   bash <(curl -Ls https://raw.githubusercontent.com/tyrantcwj/xui-pro/main/install.sh) master
   XUI_PRO_SOURCE=1 bash <(curl -Ls https://raw.githubusercontent.com/tyrantcwj/xui-pro/main/install.sh) master
-  bash <(curl -Ls https://raw.githubusercontent.com/tyrantcwj/xui-pro/main/install.sh) agent --master https://panel.example.com --token xxx
+  bash <(curl -Ls https://raw.githubusercontent.com/tyrantcwj/xui-pro/main/install.sh) agent --master http://xui.ityc.cc:8080 --token xxx --country China
 
 Environment:
   XUI_PRO_VERSION=latest|v0.1.0
@@ -61,10 +61,14 @@ source_url() {
 
 parse_args() {
   XUI_LISTEN="${XUI_LISTEN:-:8080}"
-  XUI_MASTER="${XUI_MASTER:-}"
+  XUI_MASTER="${XUI_MASTER:-http://xui.ityc.cc:8080}"
   XUI_AGENT_TOKEN="${XUI_AGENT_TOKEN:-}"
   XUI_NODE_ID="${XUI_NODE_ID:-}"
+  XUI_NODE_NAME="${XUI_NODE_NAME:-}"
+  XUI_NODE_COUNTRY="${XUI_NODE_COUNTRY:-${XUI_NODE_REGION:-unknown}}"
   XUI_NODE_REGION="${XUI_NODE_REGION:-unknown}"
+  XUI_NODE_ENDPOINT="${XUI_NODE_ENDPOINT:-}"
+  XUI_SSH_USER="${XUI_SSH_USER:-root}"
 
   shift || true
   while [ "$#" -gt 0 ]; do
@@ -73,7 +77,11 @@ parse_args() {
       --master) XUI_MASTER="$2"; shift 2 ;;
       --token) XUI_AGENT_TOKEN="$2"; shift 2 ;;
       --node-id) XUI_NODE_ID="$2"; shift 2 ;;
-      --region) XUI_NODE_REGION="$2"; shift 2 ;;
+      --node-name) XUI_NODE_NAME="$2"; shift 2 ;;
+      --country) XUI_NODE_COUNTRY="$2"; XUI_NODE_REGION="$2"; shift 2 ;;
+      --region) XUI_NODE_COUNTRY="$2"; XUI_NODE_REGION="$2"; shift 2 ;;
+      --endpoint) XUI_NODE_ENDPOINT="$2"; shift 2 ;;
+      --ssh-user) XUI_SSH_USER="$2"; shift 2 ;;
       -h|--help) usage; exit 0 ;;
       *) echo "Unknown argument: $1" >&2; usage; exit 1 ;;
     esac
@@ -170,19 +178,24 @@ EOF
 }
 
 write_agent_env() {
-  if [ -z "$XUI_MASTER" ]; then
-    echo "agent mode requires --master https://panel.example.com" >&2
-    exit 1
-  fi
   if [ -z "$XUI_NODE_ID" ]; then
     XUI_NODE_ID="$(hostname)"
+  fi
+  if [ -z "$XUI_NODE_NAME" ]; then
+    XUI_NODE_NAME="$XUI_NODE_ID"
+  fi
+  if [ -z "$XUI_NODE_ENDPOINT" ]; then
+    XUI_NODE_ENDPOINT="$XUI_NODE_ID"
   fi
   cat > "$CONFIG_DIR/agent.env" <<EOF
 XUI_MASTER=${XUI_MASTER}
 XUI_AGENT_TOKEN=${XUI_AGENT_TOKEN}
 XUI_NODE_ID=${XUI_NODE_ID}
-XUI_NODE_NAME=${XUI_NODE_ID}
+XUI_NODE_NAME=${XUI_NODE_NAME}
+XUI_NODE_COUNTRY=${XUI_NODE_COUNTRY}
 XUI_NODE_REGION=${XUI_NODE_REGION}
+XUI_NODE_ENDPOINT=${XUI_NODE_ENDPOINT}
+XUI_SSH_USER=${XUI_SSH_USER}
 EOF
 }
 

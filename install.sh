@@ -9,6 +9,7 @@ SERVICE_DIR="/etc/systemd/system"
 VERSION="${XUI_PRO_VERSION:-latest}"
 GO_VERSION="${XUI_PRO_GO_VERSION:-1.22.12}"
 FORCE_SOURCE="${XUI_PRO_SOURCE:-0}"
+FORCE_MODE_SWITCH="${XUI_PRO_FORCE:-0}"
 MODE="${1:-master}"
 
 usage() {
@@ -19,7 +20,6 @@ Usage:
 
 Examples:
   bash <(curl -Ls https://raw.githubusercontent.com/tyrantcwj/xui-pro/main/install.sh) master
-  XUI_PRO_SOURCE=1 bash <(curl -Ls https://raw.githubusercontent.com/tyrantcwj/xui-pro/main/install.sh) master
   bash <(curl -Ls https://raw.githubusercontent.com/tyrantcwj/xui-pro/main/install.sh) agent --master http://xui.ityc.cc:8080 --token xxx --country China
 
 Environment:
@@ -28,6 +28,7 @@ Environment:
   XUI_PRO_INSTALL_DIR=/usr/local/xui-pro
   XUI_PRO_GO_VERSION=1.22.12
   XUI_PRO_SOURCE=1
+  XUI_PRO_FORCE=1
 EOF
 }
 
@@ -57,6 +58,12 @@ download_url() {
 
 source_url() {
   echo "https://codeload.github.com/${REPO}/tar.gz/refs/heads/main"
+}
+
+latest_release_tag() {
+  curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest" \
+    | sed -n 's/.*"tag_name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' \
+    | head -n1
 }
 
 parse_args() {
@@ -109,6 +116,27 @@ install_files() {
   install_package "$tmp"
 }
 
+installed_version_label() {
+  if [ -x "$INSTALL_DIR/xuid" ]; then
+    "$INSTALL_DIR/xuid" --version 2>/dev/null || true
+  fi
+}
+
+write_installed_version() {
+  local label
+  label="$(installed_version_label)"
+  if [ -z "$label" ]; then
+    label="xui-pro ${VERSION}"
+  fi
+  cat > "$CONFIG_DIR/version" <<EOF
+${label}
+mode=${MODE}
+installed_at=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
+repo=${REPO}
+requested_version=${VERSION}
+EOF
+}
+
 install_package() {
   local tmp="$1"
   mkdir -p "$INSTALL_DIR" "$CONFIG_DIR"
@@ -140,11 +168,12 @@ ensure_go() {
     return
   fi
 
+  local go_arch="$arch"
   local toolchain_dir="/usr/local/xui-pro-toolchain"
-  local go_tar="/tmp/go${GO_VERSION}.linux-${arch}.tar.gz"
+  local go_tar="/tmp/go${GO_VERSION}.linux-${go_arch}.tar.gz"
   echo "Installing portable Go ${GO_VERSION} for source build..."
   mkdir -p "$toolchain_dir"
-  curl -fL "https://go.dev/dl/go${GO_VERSION}.linux-${arch}.tar.gz" -o "$go_tar"
+  curl -fL "https://go.dev/dl/go${GO_VERSION}.linux-${go_arch}.tar.gz" -o "$go_tar"
   rm -rf "$toolchain_dir/go"
   tar -xzf "$go_tar" -C "$toolchain_dir"
   export PATH="$toolchain_dir/go/bin:$PATH"
@@ -154,20 +183,68 @@ build_from_source() {
   local arch="$1"
   local tmp="$2"
   local src="$tmp/src"
+  local commit
+  local build_version
   mkdir -p "$src" "$tmp/package"
 
   curl -fL "$(source_url)" -o "$tmp/source.tar.gz"
   tar -xzf "$tmp/source.tar.gz" -C "$src" --strip-components=1
   ensure_go "$arch"
+  commit="$(cd "$src" && git rev-parse --short HEAD 2>/dev/null || echo source)"
+  build_version="${XUI_PRO_BUILD_VERSION:-main}"
 
   echo "Building xui-pro from source..."
-  (cd "$src" && CGO_ENABLED=0 GOOS=linux GOARCH="$arch" go build -trimpath -ldflags "-s -w" -o "$tmp/package/xuid" ./cmd/xuid)
-  (cd "$src" && CGO_ENABLED=0 GOOS=linux GOARCH="$arch" go build -trimpath -ldflags "-s -w" -o "$tmp/package/xui-agent" ./cmd/xui-agent)
+  (cd "$src" && CGO_ENABLED=0 GOOS=linux GOARCH="$arch" go build -trimpath -ldflags "-s -w -X xui-next/internal/version.Version=${build_version} -X xui-next/internal/version.Commit=${commit}" -o "$tmp/package/xuid" ./cmd/xuid)
+  (cd "$src" && CGO_ENABLED=0 GOOS=linux GOARCH="$arch" go build -trimpath -ldflags "-s -w -X xui-next/internal/version.Version=${build_version} -X xui-next/internal/version.Commit=${commit}" -o "$tmp/package/xui-agent" ./cmd/xui-agent)
   cp "$src/scripts/xui-pro.sh" "$tmp/package/xui-pro"
   chmod +x "$tmp/package/xuid" "$tmp/package/xui-agent" "$tmp/package/xui-pro"
   cp -R "$src/reality" "$tmp/package/reality"
   (cd "$tmp/package" && tar -czf "$tmp/xui-pro.tar.gz" .)
   install_package "$tmp"
+}
+
+service_active_or_enabled() {
+  local service="$1"
+  systemctl is-active --quiet "$service" 2>/dev/null || systemctl is-enabled --quiet "$service" 2>/dev/null
+}
+
+env_has_value() {
+  local file="$1"
+  local key="$2"
+  [ -f "$file" ] && grep -Eq "^${key}=.+" "$file"
+}
+
+assert_exclusive_mode() {
+  if [ "$FORCE_MODE_SWITCH" = "1" ]; then
+    return
+  fi
+
+  case "$MODE" in
+    master)
+      if service_active_or_enabled "xui-pro-agent.service" \
+        || env_has_value "$CONFIG_DIR/agent.env" "XUI_MASTER" \
+        || env_has_value "$CONFIG_DIR/agent.env" "XUI_NODE_ENDPOINT" \
+        || env_has_value "$CONFIG_DIR/agent.env" "XUI_NODE_ID"; then
+        cat >&2 <<EOF
+Refusing to install master: this VPS already looks like an Agent node.
+Master and Agent are mutually exclusive on the same machine.
+If you really want to switch this machine to master, stop/remove the Agent first or run with XUI_PRO_FORCE=1.
+EOF
+        exit 1
+      fi
+      ;;
+    agent)
+      if service_active_or_enabled "xui-pro.service" \
+        || env_has_value "$CONFIG_DIR/master.env" "XUI_LISTEN"; then
+        cat >&2 <<EOF
+Refusing to install agent: this VPS already looks like the Master panel.
+Master and Agent are mutually exclusive on the same machine.
+If you really want to switch this machine to agent, stop/remove the Master first or run with XUI_PRO_FORCE=1.
+EOF
+        exit 1
+      fi
+      ;;
+  esac
 }
 
 write_master_env() {
@@ -240,13 +317,18 @@ enable_mode() {
     master)
       write_master_env
       systemctl enable --now xui-pro.service
-      systemctl disable --now xui-pro-agent.service >/dev/null 2>&1 || true
-      echo "XUI Pro master installed. Check: xui-pro status"
+      write_installed_version
+      echo "XUI Pro master installed."
+      echo "Version: $(installed_version_label)"
+      echo "Check: xui-pro status"
       ;;
     agent)
       write_agent_env
       systemctl enable --now xui-pro-agent.service
-      echo "XUI Pro agent installed. Check: xui-pro agent-status"
+      write_installed_version
+      echo "XUI Pro agent installed."
+      echo "Version: $("$INSTALL_DIR/xui-agent" --version 2>/dev/null || echo "xui-pro ${VERSION}")"
+      echo "Check: xui-pro agent-status"
       ;;
     *)
       echo "Unknown mode: $MODE" >&2
@@ -259,6 +341,11 @@ enable_mode() {
 main() {
   need_root
   parse_args "$@"
+  if [ "$VERSION" = "latest" ] && [ "$FORCE_SOURCE" != "1" ]; then
+    VERSION="$(latest_release_tag || true)"
+    VERSION="${VERSION:-latest}"
+  fi
+  assert_exclusive_mode
   arch="$(detect_arch)"
   install_files "$arch"
   write_services

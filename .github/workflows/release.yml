@@ -37,10 +37,14 @@ jobs:
           CGO_ENABLED: "0"
           GOOS: linux
           GOARCH: ${{ matrix.goarch }}
+          VERSION: ${{ github.ref_name }}
+          COMMIT: ${{ github.sha }}
         run: |
           mkdir -p dist/package
-          go build -trimpath -ldflags "-s -w" -o dist/package/xuid ./cmd/xuid
-          go build -trimpath -ldflags "-s -w" -o dist/package/xui-agent ./cmd/xui-agent
+          SHORT_COMMIT="${COMMIT::7}"
+          LDFLAGS="-s -w -X xui-next/internal/version.Version=${VERSION} -X xui-next/internal/version.Commit=${SHORT_COMMIT}"
+          go build -trimpath -ldflags "$LDFLAGS" -o dist/package/xuid ./cmd/xuid
+          go build -trimpath -ldflags "$LDFLAGS" -o dist/package/xui-agent ./cmd/xui-agent
           cp scripts/xui-pro.sh dist/package/xui-pro
           chmod +x dist/package/xuid dist/package/xui-agent dist/package/xui-pro
           cp -R reality dist/package/reality

@@ -14,7 +14,9 @@ type Node struct {
 	ID        string      `json:"id"`
 	Name      string      `json:"name"`
 	Region    string      `json:"region"`
+	Country   string      `json:"country"`
 	Endpoint  string      `json:"endpoint"`
+	SSHUser   string      `json:"sshUser"`
 	Version   string      `json:"version"`
 	Status    NodeStatus  `json:"status"`
 	LastSeen  time.Time   `json:"lastSeen"`

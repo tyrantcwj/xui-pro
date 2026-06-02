@@ -48,15 +48,22 @@ type DesiredConfig struct {
 }
 
 type Inbound struct {
-	ID        string    `json:"id"`
-	Remark    string    `json:"remark"`
-	Protocol  string    `json:"protocol"`
-	Port      int       `json:"port"`
-	Enabled   bool      `json:"enabled"`
-	Settings  string    `json:"settings"`
-	Stream    string    `json:"stream"`
-	CreatedAt time.Time `json:"createdAt"`
-	UpdatedAt time.Time `json:"updatedAt"`
+	ID             string    `json:"id"`
+	Remark         string    `json:"remark"`
+	Protocol       string    `json:"protocol"`
+	Listen         string    `json:"listen"`
+	Port           int       `json:"port"`
+	Enabled        bool      `json:"enabled"`
+	Up             int64     `json:"up"`
+	Down           int64     `json:"down"`
+	Total          int64     `json:"total"`
+	ExpiryTime     int64     `json:"expiryTime"`
+	Settings       string    `json:"settings"`
+	StreamSettings string    `json:"streamSettings"`
+	Sniffing       string    `json:"sniffing"`
+	Tag            string    `json:"tag"`
+	CreatedAt      time.Time `json:"createdAt"`
+	UpdatedAt      time.Time `json:"updatedAt"`
 }
 
 type RealityDomain struct {

@@ -36,6 +36,7 @@ func (s *Store) UpsertNode(n domain.Node) domain.Node {
 	}
 	n.LastSeen = now
 	n.Status = domain.NodeStatusOnline
+	n.Metrics = nil
 	s.nodes[n.ID] = n
 	return n
 }
@@ -56,6 +57,10 @@ func (s *Store) Nodes() []domain.Node {
 
 	out := make([]domain.Node, 0, len(s.nodes))
 	for _, n := range s.nodes {
+		if m, ok := s.metrics[n.ID]; ok {
+			metric := m
+			n.Metrics = &metric
+		}
 		out = append(out, n)
 	}
 	return out

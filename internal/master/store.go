@@ -9,17 +9,19 @@ import (
 )
 
 type Store struct {
-	mu      sync.RWMutex
-	nodes   map[string]domain.Node
-	metrics map[string]domain.NodeMetric
-	configs map[string]domain.DesiredConfig
+	mu        sync.RWMutex
+	nodes     map[string]domain.Node
+	metrics   map[string]domain.NodeMetric
+	configs   map[string]domain.DesiredConfig
+	overrides map[string]domain.Node
 }
 
 func NewStore() *Store {
 	return &Store{
-		nodes:   map[string]domain.Node{},
-		metrics: map[string]domain.NodeMetric{},
-		configs: map[string]domain.DesiredConfig{},
+		nodes:     map[string]domain.Node{},
+		metrics:   map[string]domain.NodeMetric{},
+		configs:   map[string]domain.DesiredConfig{},
+		overrides: map[string]domain.Node{},
 	}
 }
 
@@ -42,6 +44,9 @@ func (s *Store) UpsertNode(n domain.Node) domain.Node {
 	}
 	if n.SSHUser == "" {
 		n.SSHUser = "root"
+	}
+	if override, ok := s.overrides[n.ID]; ok {
+		n = applyNodeOverride(n, override)
 	}
 	n.LastSeen = now
 	n.Status = domain.NodeStatusOnline
@@ -94,8 +99,43 @@ func (s *Store) UpdateNode(id string, patch domain.Node) (domain.Node, bool) {
 	if patch.SSHUser != "" {
 		n.SSHUser = patch.SSHUser
 	}
+	s.overrides[id] = mergeNodeOverride(s.overrides[id], patch)
 	s.nodes[id] = n
 	return n, true
+}
+
+func applyNodeOverride(n domain.Node, override domain.Node) domain.Node {
+	if override.Name != "" {
+		n.Name = override.Name
+	}
+	if override.Country != "" {
+		n.Country = override.Country
+		n.Region = override.Country
+	}
+	if override.Endpoint != "" {
+		n.Endpoint = override.Endpoint
+	}
+	if override.SSHUser != "" {
+		n.SSHUser = override.SSHUser
+	}
+	return n
+}
+
+func mergeNodeOverride(existing domain.Node, patch domain.Node) domain.Node {
+	if patch.Name != "" {
+		existing.Name = patch.Name
+	}
+	if patch.Country != "" {
+		existing.Country = patch.Country
+		existing.Region = patch.Country
+	}
+	if patch.Endpoint != "" {
+		existing.Endpoint = patch.Endpoint
+	}
+	if patch.SSHUser != "" {
+		existing.SSHUser = patch.SSHUser
+	}
+	return existing
 }
 
 func (s *Store) DesiredConfig(nodeID string) (domain.DesiredConfig, error) {

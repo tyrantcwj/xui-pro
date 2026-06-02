@@ -15,7 +15,11 @@ case "$cmd" in
   agent-status) systemctl status xui-pro-agent.service --no-pager ;;
   agent-logs) journalctl -u xui-pro-agent.service -f ;;
   version)
-    /usr/local/xui-pro/xuid --version 2>/dev/null || echo "xui-pro development build"
+    if [ -f /etc/xui-pro/version ]; then
+      cat /etc/xui-pro/version
+    fi
+    /usr/local/xui-pro/xuid --version 2>/dev/null || true
+    /usr/local/xui-pro/xui-agent --version 2>/dev/null || true
     ;;
   *)
     cat <<'EOF'

@@ -45,7 +45,6 @@ func (s *Store) UpsertNode(n domain.Node) domain.Node {
 	}
 	n.LastSeen = now
 	n.Status = domain.NodeStatusOnline
-	n.Metrics = nil
 	s.nodes[n.ID] = n
 	return n
 }
@@ -73,6 +72,30 @@ func (s *Store) Nodes() []domain.Node {
 		out = append(out, n)
 	}
 	return out
+}
+
+func (s *Store) UpdateNode(id string, patch domain.Node) (domain.Node, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	n, ok := s.nodes[id]
+	if !ok {
+		return domain.Node{}, false
+	}
+	if patch.Name != "" {
+		n.Name = patch.Name
+	}
+	if patch.Country != "" {
+		n.Country = patch.Country
+		n.Region = patch.Country
+	}
+	if patch.Endpoint != "" {
+		n.Endpoint = patch.Endpoint
+	}
+	if patch.SSHUser != "" {
+		n.SSHUser = patch.SSHUser
+	}
+	s.nodes[id] = n
+	return n, true
 }
 
 func (s *Store) DesiredConfig(nodeID string) (domain.DesiredConfig, error) {

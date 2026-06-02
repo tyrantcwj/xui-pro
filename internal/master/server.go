@@ -20,13 +20,23 @@ func NewServer(store *Store, reality *reality.Library) *Server {
 
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
+	mux.HandleFunc("GET /", s.index)
 	mux.HandleFunc("GET /api/health", s.health)
 	mux.HandleFunc("GET /api/nodes", s.nodes)
 	mux.HandleFunc("POST /api/nodes/register", s.registerNode)
 	mux.HandleFunc("POST /api/nodes/", s.nodeAction)
 	mux.HandleFunc("GET /api/reality/domains", s.realityDomains)
 	mux.HandleFunc("POST /api/reality/recommend", s.realityRecommend)
-	return withJSON(mux)
+	return mux
+}
+
+func (s *Server) index(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path != "/" {
+		http.NotFound(w, r)
+		return
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	_, _ = w.Write([]byte(indexHTML))
 }
 
 func (s *Server) health(w http.ResponseWriter, _ *http.Request) {
@@ -92,13 +102,6 @@ func (s *Server) realityRecommend(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, s.reality.Recommend(req.Region, req.Limit))
 }
 
-func withJSON(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		next.ServeHTTP(w, r)
-	})
-}
-
 func decodeJSON(w http.ResponseWriter, r *http.Request, v any) bool {
 	defer r.Body.Close()
 	if err := json.NewDecoder(r.Body).Decode(v); err != nil {
@@ -109,6 +112,30 @@ func decodeJSON(w http.ResponseWriter, r *http.Request, v any) bool {
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(v)
 }
+
+const indexHTML = `<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>XUI Pro</title>
+  <style>
+    :root{color-scheme:dark;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#101316;color:#edf5f2}body{margin:0}.shell{max-width:1040px;margin:0 auto;padding:40px 20px}.top{display:flex;justify-content:space-between;gap:16px;align-items:center;margin-bottom:24px}h1{margin:0;font-size:30px}p{color:#94a6a1}.badge{border-radius:999px;padding:6px 10px;background:#18382c;color:#65e6ad;font-weight:700}.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.card,.panel{border:1px solid #29343c;background:#171d22;border-radius:8px;padding:18px}.panel{margin-top:16px;overflow-x:auto}.card span{display:block;color:#94a6a1;margin-bottom:8px}.card strong{font-size:28px}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:10px 8px;border-bottom:1px solid #27323a}th{color:#94a6a1;font-size:13px}a{color:#65e6ad}code{background:#222b31;padding:2px 6px;border-radius:6px}@media(max-width:760px){.top{align-items:flex-start;flex-direction:column}.grid{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <div class="top"><div><h1>XUI Pro</h1><p>主控服务已启动。完整 Vue 面板仍在开发中，当前页面用于试装验证。</p></div><span class="badge" id="health">checking</span></div>
+    <section class="grid"><div class="card"><span>节点数量</span><strong id="nodeCount">-</strong></div><div class="card"><span>在线节点</span><strong id="onlineCount">-</strong></div><div class="card"><span>API</span><strong>/api</strong></div></section>
+    <section class="panel"><h2>节点列表</h2><table><thead><tr><th>名称</th><th>地区</th><th>状态</th><th>版本</th><th>最后心跳</th></tr></thead><tbody id="nodes"><tr><td colspan="5">暂无节点，安装 Agent 后会显示在这里。</td></tr></tbody></table></section>
+    <section class="panel"><h2>下一步</h2><p>健康检查：<a href="/api/health">/api/health</a>，节点 API：<a href="/api/nodes">/api/nodes</a></p></section>
+  </main>
+  <script>
+    async function load(){const h=await fetch('/api/health').then(r=>r.json()).catch(()=>({status:'error'}));document.getElementById('health').textContent=h.status;const ns=await fetch('/api/nodes').then(r=>r.json()).catch(()=>[]);document.getElementById('nodeCount').textContent=ns.length;document.getElementById('onlineCount').textContent=ns.filter(n=>n.status==='online').length;if(ns.length){document.getElementById('nodes').innerHTML=ns.map(n=>'<tr><td>'+(n.name||n.id)+'</td><td>'+(n.region||'-')+'</td><td>'+(n.status||'-')+'</td><td>'+(n.version||'-')+'</td><td>'+(n.lastSeen||'-')+'</td></tr>').join('')}}load();
+  </script>
+</body>
+</html>`

@@ -65,8 +65,8 @@ parse_args() {
   XUI_AGENT_TOKEN="${XUI_AGENT_TOKEN:-}"
   XUI_NODE_ID="${XUI_NODE_ID:-}"
   XUI_NODE_NAME="${XUI_NODE_NAME:-}"
-  XUI_NODE_COUNTRY="${XUI_NODE_COUNTRY:-${XUI_NODE_REGION:-unknown}}"
-  XUI_NODE_REGION="${XUI_NODE_REGION:-unknown}"
+  XUI_NODE_COUNTRY="${XUI_NODE_COUNTRY:-${XUI_NODE_REGION:-}}"
+  XUI_NODE_REGION="${XUI_NODE_REGION:-}"
   XUI_NODE_ENDPOINT="${XUI_NODE_ENDPOINT:-}"
   XUI_SSH_USER="${XUI_SSH_USER:-root}"
 
@@ -183,9 +183,6 @@ write_agent_env() {
   fi
   if [ -z "$XUI_NODE_NAME" ]; then
     XUI_NODE_NAME="$XUI_NODE_ID"
-  fi
-  if [ -z "$XUI_NODE_ENDPOINT" ]; then
-    XUI_NODE_ENDPOINT="$XUI_NODE_ID"
   fi
   cat > "$CONFIG_DIR/agent.env" <<EOF
 XUI_MASTER=${XUI_MASTER}

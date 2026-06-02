@@ -7,6 +7,7 @@ BIN_DIR="${XUI_PRO_BIN_DIR:-/usr/local/bin}"
 CONFIG_DIR="${XUI_PRO_CONFIG_DIR:-/etc/xui-pro}"
 SERVICE_DIR="/etc/systemd/system"
 VERSION="${XUI_PRO_VERSION:-latest}"
+GO_VERSION="${XUI_PRO_GO_VERSION:-1.22.12}"
 MODE="${1:-master}"
 
 usage() {
@@ -23,6 +24,7 @@ Environment:
   XUI_PRO_VERSION=latest|v0.1.0
   XUI_PRO_REPO=tyrantcwj/xui-pro
   XUI_PRO_INSTALL_DIR=/usr/local/xui-pro
+  XUI_PRO_GO_VERSION=1.22.12
 EOF
 }
 
@@ -50,6 +52,10 @@ download_url() {
   fi
 }
 
+source_url() {
+  echo "https://codeload.github.com/${REPO}/tar.gz/refs/heads/main"
+}
+
 parse_args() {
   XUI_LISTEN="${XUI_LISTEN:-:8080}"
   XUI_MASTER="${XUI_MASTER:-}"
@@ -75,10 +81,19 @@ install_files() {
   local arch="$1"
   local tmp
   tmp="$(mktemp -d)"
-  trap 'rm -rf "$tmp"' EXIT
+  trap "rm -rf '$tmp'" EXIT
 
   echo "Downloading xui-pro ${VERSION} for linux-${arch}..."
-  curl -fL "$(download_url "$arch")" -o "$tmp/xui-pro.tar.gz"
+  if ! curl -fL "$(download_url "$arch")" -o "$tmp/xui-pro.tar.gz"; then
+    echo "Release asset was not found. Falling back to source build..."
+    build_from_source "$arch" "$tmp"
+    return
+  fi
+  install_package "$tmp"
+}
+
+install_package() {
+  local tmp="$1"
   mkdir -p "$INSTALL_DIR" "$CONFIG_DIR"
   tar -xzf "$tmp/xui-pro.tar.gz" -C "$tmp"
   cp -f "$tmp/xuid" "$INSTALL_DIR/xuid"
@@ -89,6 +104,54 @@ install_files() {
   if [ -d "$tmp/reality" ]; then
     cp -R "$tmp/reality" "$INSTALL_DIR/"
   fi
+}
+
+ensure_go() {
+  local arch="$1"
+  local need_install=0
+  if command -v go >/dev/null 2>&1; then
+    local minor
+    minor="$(go version | sed -n 's/.*go[0-9][0-9]*\.\([0-9][0-9]*\).*/\1/p' | head -n1)"
+    if [ -z "$minor" ] || [ "$minor" -lt 22 ]; then
+      need_install=1
+    fi
+  else
+    need_install=1
+  fi
+
+  if [ "$need_install" -eq 0 ]; then
+    return
+  fi
+
+  local go_arch="$arch"
+  local toolchain_dir="/usr/local/xui-pro-toolchain"
+  local go_tar="/tmp/go${GO_VERSION}.linux-${go_arch}.tar.gz"
+  echo "Installing portable Go ${GO_VERSION} for source build..."
+  mkdir -p "$toolchain_dir"
+  curl -fL "https://go.dev/dl/go${GO_VERSION}.linux-${go_arch}.tar.gz" -o "$go_tar"
+  rm -rf "$toolchain_dir/go"
+  tar -xzf "$go_tar" -C "$toolchain_dir"
+  export PATH="$toolchain_dir/go/bin:$PATH"
+}
+
+build_from_source() {
+  local arch="$1"
+  local tmp="$2"
+  local src="$tmp/src"
+  mkdir -p "$src" "$tmp/package"
+
+  curl -fL "$(source_url)" -o "$tmp/source.tar.gz"
+  tar -xzf "$tmp/source.tar.gz" -C "$src" --strip-components=1
+  ensure_go "$arch"
+
+  echo "Building xui-pro from source..."
+  (cd "$src" && CGO_ENABLED=0 GOOS=linux GOARCH="$arch" go build -trimpath -ldflags "-s -w" -o "$tmp/package/xuid" ./cmd/xuid)
+  (cd "$src" && CGO_ENABLED=0 GOOS=linux GOARCH="$arch" go build -trimpath -ldflags "-s -w" -o "$tmp/package/xui-agent" ./cmd/xui-agent)
+  cp "$src/scripts/xui-pro.sh" "$tmp/package/xui-pro"
+  chmod +x "$tmp/package/xuid" "$tmp/package/xui-agent" "$tmp/package/xui-pro"
+  cp -R "$src/reality" "$tmp/package/reality"
+  (cd "$tmp/package" && tar -czf "$tmp/xui-pro.tar.gz" .)
+  install_package "$tmp"
 }
 
 write_master_env() {
